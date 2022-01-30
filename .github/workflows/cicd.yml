@@ -1,0 +1,32 @@
+name: CICD
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  docker-linux:
+    name: Docker Linux
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
+      id: extract_branch  
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag parttimelegend/cloudponents:latest --tag parttimelegend/cloudponents:$(date +%s) --tag parttimelegend/cloudponents:${{ github.sha }} --no-cache
+    - name: Docker image list
+      run: docker images
+    - name: Docker Login
+      run: docker login --username ${{secrets.DOCKERHUB_USERNAME}}  --password ${{secrets.DOCKERHUB_TOKEN}} 
+      if: steps.extract_branch.outputs.branch == 'master'
+    - name: Docker Push
+      run: docker push parttimelegend/cloudponents
+      if: steps.extract_branch.outputs.branch == 'master'
